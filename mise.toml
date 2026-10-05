@@ -1,6 +1,10 @@
 [tools]
 python = "3.14"
+upx = "latest"
 uv = "latest"
 
 [env]
 UV_PYTHON_DOWNLOADS = "never"
+
+[tasks.build]
+run = "auto-py-to-exe -c auto-py-to-exe.json -o build"

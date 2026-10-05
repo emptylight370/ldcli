@@ -203,6 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 # ---- 入口分发 ----
 
+
 def run(args: argparse.Namespace) -> int:
     if getattr(args, "func", None) is None:
         args.parser.print_help()
@@ -239,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
 
 # ---- 各子命令实现（返回 API data 供统一输出）----
 
+
 def _normalize_global_args(argv: list[str]) -> list[str]:
     """把全局参数（--json / --token）提前到子命令之前，允许其出现在任意位置。"""
     global_args: list[str] = []
@@ -250,7 +252,7 @@ def _normalize_global_args(argv: list[str]) -> list[str]:
             global_args.append(arg)
             i += 1
         elif arg == "--token":
-            global_args.extend(argv[i : i + 2])
+            global_args.extend(argv[i:i + 2])
             i += 2
         else:
             rest.append(arg)
@@ -361,7 +363,14 @@ def cmd_article_update(client: Client, args: argparse.Namespace) -> Any:
     current = client.get(f"/api/v2/article/update/{args.id}")
     body: dict[str, Any] = {}
     if isinstance(current, dict):
-        for key in ("articleTitle", "articleTags", "articleContent", "articleType", "articleRewardContent", "articleRewardPoint"):
+        for key in (
+            "articleTitle",
+            "articleTags",
+            "articleContent",
+            "articleType",
+            "articleRewardContent",
+            "articleRewardPoint"
+        ):
             if key in current:
                 body[key] = current[key]
     if args.title is not None:

@@ -30,7 +30,6 @@ class ApiError(Exception):
 
 class Client:
     """封装对社区 REST API 的访问。"""
-
     def __init__(self, token: str | None = None) -> None:
         self.token = token
         headers = {"User-Agent": USER_AGENT}

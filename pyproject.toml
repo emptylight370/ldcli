@@ -9,6 +9,15 @@ dependencies = ["httpx>=0.28"]
 [project.scripts]
 ldcli = "ldcli:main"
 
+[dependency-groups]
+dev = [
+  "auto-py-to-exe>=2.50.1",
+]
+
 [build-system]
 requires = ["uv_build>=0.12.18,<0.13.0"]
 build-backend = "uv_build"
+
+[[tool.uv.index]]
+url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
+default = true
