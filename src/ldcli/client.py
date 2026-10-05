@@ -90,7 +90,10 @@ class Client:
             raise ApiError(f"网络请求失败：{e}") from e
 
         if resp.status_code == 401:
-            raise ApiError("需要登录（401）：请先执行 ldcli login，或通过 --token/LDCLI_TOKEN 提供 API Token")
+            raise ApiError(
+                "需要登录（401）：请先执行 ldcli login <token> 保存 API Token"
+                "（在 ld246.com 设置-账号 页面获取），或通过 --token/LDCLI_TOKEN 提供"
+            )
         if resp.status_code == 403:
             raise ApiError("权限不足（403）：当前账号无权执行该操作")
         if resp.status_code >= 400:
@@ -103,6 +106,14 @@ class Client:
         if not isinstance(payload, dict):
             raise ApiError(f"响应结构异常：{str(payload)[:200]}")
         return payload
+
+    def set_token(self, token: str | None) -> None:
+        """更新鉴权 Token（用于 login 命令验证新 Token）。"""
+        self.token = token
+        if token:
+            self._http.headers["Authorization"] = f"token {token}"
+        else:
+            self._http.headers.pop("Authorization", None)
 
     def get(self, path: str, **kwargs: Any) -> Any:
         return self.request("GET", path, **kwargs)

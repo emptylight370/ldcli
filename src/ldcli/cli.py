@@ -33,8 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(title="子命令", metavar="<command>")
 
     # ---- login / logout / whoami ----
-    p = sub.add_parser("login", help="密码登录（交互式，支持验证码与两步验证）")
-    p.add_argument("user", nargs="?", help="用户名或邮箱（省略则交互输入）")
+    p = sub.add_parser("login", help="录入 API Token 并保存（Token 在 ld246.com 设置-账号 页面获取）")
+    p.add_argument("token", nargs="?", help="API Token（省略则交互输入）")
     p.set_defaults(func=cmd_login)
 
     p = sub.add_parser("logout", help="登出并清除本地 token")
@@ -261,14 +261,14 @@ def _normalize_global_args(argv: list[str]) -> list[str]:
 
 
 def cmd_login(client: Client, args: argparse.Namespace) -> None:
-    token = auth_login(client, user_name=args.user, password=None)
-    print("登录成功，token 已保存到配置文件。")
-    # 登录流程自行输出提示，不走统一 data 输出
+    # 优先取位置参数，其次全局 --token
+    auth_login(client, args.token or client.token)
+    print("API Token 已验证并保存到配置文件。")
     return None
 
 
 def cmd_logout(client: Client, args: argparse.Namespace) -> None:
-    auth_logout(client)
+    auth_logout()
     return None
 
 
