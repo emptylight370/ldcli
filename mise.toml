@@ -8,3 +8,6 @@ UV_PYTHON_DOWNLOADS = "never"
 
 [tasks.build]
 run = "auto-py-to-exe -c auto-py-to-exe.json -o build"
+
+[settings.python]
+uv_venv_auto = "create|source"
