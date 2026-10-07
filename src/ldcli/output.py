@@ -9,9 +9,9 @@ from typing import Any
 # 各表头键名 -> 显示标题（顺序即列顺序）
 TABLE_COLUMNS: dict[str, list[tuple[str, str]]] = {
     "articles": [
-        ("articleId", "ID"),
+        ("oId", "ID"),
         ("articleTitle", "标题"),
-        ("userName", "作者"),
+        ("articleAuthorName", "作者"),
         ("articleCommentCount", "回帖"),
         ("articleViewCount", "浏览"),
     ],
@@ -67,6 +67,59 @@ def print_pretty(data: Any, *, table_key: str | None = None) -> None:
                 print("-" * 40)
         return
     _print_kv(data)
+
+
+def print_articles_brief(rows: list[Any]) -> None:
+    """帖子列表简洁视图：一行标题 + 一行摘要，条目间以空行分隔。"""
+    if not rows:
+        print("(空列表)")
+        return
+    for i, row in enumerate(rows, 1):
+        title = _plain(_get(row, "articleTitle"))
+        perfect = str(_get(row, "articlePerfect") or "0")
+        if perfect not in ("0", "", "None"):
+            title = f"[精] {title}"
+        print(f"{i:>3}. {title}")
+
+        meta: list[str] = []
+        author = _plain(_get(row, "articleAuthorName"))
+        if author:
+            meta.append(author)
+        tags = _plain(_get(row, "articleTags"))
+        if tags:
+            meta.append(tags)
+        comments = _get(row, "articleCommentCount")
+        if str(comments or "0") not in ("0", "", "None"):
+            meta.append(f"回帖 {comments}")
+        time_ago = _get(row, "timeAgo")
+        if time_ago:
+            meta.append(str(time_ago))
+        line = " · ".join(meta)
+        oid = _get(row, "oId") or _get(row, "articleId")
+        if oid:
+            line = f"{line}  ({oid})" if line else f"(ID {oid})"
+        if line:
+            print(f"     {line}")
+        print()
+
+
+def plain_text(value: Any) -> str:
+    """将 markdown/HTML 片段压成单行纯文本。"""
+    return _plain(value)
+
+
+def html_to_text(value: Any) -> str:
+    """将 HTML 片段转为多行纯文本，保留段落换行。"""
+    import html as html_lib
+    import re
+
+    text = "" if value is None else str(value)
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</p\s*>", "\n\n", text)
+    text = re.sub(r"(?i)<[^>]+>", "", text)
+    text = html_lib.unescape(text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def _print_table(rows: list[Any], columns: list[tuple[str, str]]) -> None:

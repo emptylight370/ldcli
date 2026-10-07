@@ -12,7 +12,7 @@ from .auth import login as auth_login
 from .auth import logout as auth_logout
 from .client import ApiError, Client
 from .config import TOKEN_ENV, load_token
-from .output import emit, markdown_block
+from .output import emit, html_to_text, print_articles_brief
 
 NOTIFY_TYPES = ("commented", "comment2ed", "reply", "at", "following", "point", "broadcast", "wallet", "sys-announce")
 NOTIFY_READABLE = ("commented", "comment2ed", "reply", "at", "following")
@@ -50,17 +50,20 @@ def build_parser() -> argparse.ArgumentParser:
     p = article_sub.add_parser("list", help="最新帖子列表")
     p.add_argument("-s", "--sort", choices=SORTS, default="time", help="排序方式（默认 time）")
     p.add_argument("-p", "--page", type=int, default=1, help="页号（默认 1，页大小固定 20）")
+    p.add_argument("--full", action="store_true", help="输出完整表格视图（默认简洁视图）")
     p.set_defaults(func=cmd_article_list, table_key="articles")
 
     p = article_sub.add_parser("domain", help="领域帖子列表")
     p.add_argument("uri", help="领域 URI，如 Java")
     p.add_argument("-p", "--page", type=int, default=1)
+    p.add_argument("--full", action="store_true", help="输出完整表格视图（默认简洁视图）")
     p.set_defaults(func=cmd_article_domain, table_key="articles")
 
     p = article_sub.add_parser("tag", help="标签帖子列表")
     p.add_argument("uri", help="标签 URI，如 Java")
     p.add_argument("-s", "--sort", choices=SORTS, default="time")
     p.add_argument("-p", "--page", type=int, default=1)
+    p.add_argument("--full", action="store_true", help="输出完整表格视图（默认简洁视图）")
     p.set_defaults(func=cmd_article_tag, table_key="articles")
 
     p = article_sub.add_parser("show", help="帖子详情（含回帖）")
@@ -223,6 +226,14 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # 强制 UTF-8 输出，避免 Windows 管道/重定向下中文乱码
+    for stream in (sys.stdout, sys.stderr):
+        enc = (stream.encoding or "").lower().replace("-", "")
+        if enc and enc != "utf8":
+            try:
+                stream.reconfigure(encoding="utf-8")
+            except (AttributeError, OSError):
+                pass
     parser = build_parser()
     normalized = _normalize_global_args(argv if argv is not None else sys.argv[1:])
     args = parser.parse_args(normalized)
@@ -280,30 +291,53 @@ def _latest_path(sort: str) -> str:
     return "/api/v2/articles/latest" if sort == "time" else f"/api/v2/articles/latest/{sort}"
 
 
+def _emit_articles(data: Any, args: argparse.Namespace) -> None:
+    """帖子列表输出：--json 原始 JSON；--full 完整表格；默认简洁视图。"""
+    if args.json:
+        emit(data, as_json=True)
+        return
+    if isinstance(data, dict):
+        rows = data.get("articles") or []
+    elif isinstance(data, list):
+        rows = data
+    else:
+        rows = []
+    if getattr(args, "full", False):
+        emit(rows, as_json=False, table_key="articles")
+    else:
+        print_articles_brief(rows)
+
+
 def cmd_article_list(client: Client, args: argparse.Namespace) -> Any:
-    return client.get(_latest_path(args.sort), params={"p": args.page})
+    data = client.get(_latest_path(args.sort), params={"p": args.page})
+    _emit_articles(data, args)
+    return None
 
 
 def cmd_article_domain(client: Client, args: argparse.Namespace) -> Any:
-    return client.get(f"/api/v2/articles/domain/{args.uri}", params={"p": args.page})
+    data = client.get(f"/api/v2/articles/domain/{args.uri}", params={"p": args.page})
+    _emit_articles(data, args)
+    return None
 
 
 def cmd_article_tag(client: Client, args: argparse.Namespace) -> Any:
     path = f"/api/v2/articles/tag/{args.uri}"
     if args.sort != "time":
         path += f"/{args.sort}"
-    return client.get(path, params={"p": args.page})
+    data = client.get(path, params={"p": args.page})
+    _emit_articles(data, args)
+    return None
 
 
 def cmd_article_show(client: Client, args: argparse.Namespace) -> Any:
     data = client.get(f"/api/v2/article/{args.id}", params={"p": args.page})
     if not args.json and isinstance(data, dict):
-        _render_article_detail(data)
+        _render_article_detail(data, page=args.page)
         return None
     return data
 
 
-def _render_article_detail(data: dict[str, Any]) -> None:
+def _render_article_detail(data: dict[str, Any], page: int = 1) -> None:
     article = data.get("article") or {}
     print(f"标题: {article.get('articleTitle', '')}")
     print(f"作者: {article.get('articleAuthorName', article.get('userName', ''))}")
@@ -311,15 +345,26 @@ def _render_article_detail(data: dict[str, Any]) -> None:
     print(f"标签: {article.get('articleTags', '')}")
     print(f"浏览: {article.get('articleViewCount', '')}  回帖: {article.get('articleCommentCount', '')}")
     print("-" * 60)
-    markdown_block(article.get("articleContent"))
-    comments = data.get("comments")
+    print(html_to_text(article.get("articleContent")))
+    comments = article.get("articleComments") or data.get("comments") or []
     if comments:
         print("-" * 60)
-        print(f"回帖（{len(comments)} 条）:")
+        print(f"回帖（本页 {len(comments)} 条）:")
+        print()
         for c in comments:
             author = c.get("commentAuthorName", c.get("userName", ""))
-            print(f"[{c.get('oId', '')}] {author}: ")
-            markdown_block(c.get("commentContent"))
+            time_ago = c.get("timeAgo", "")
+            suffix = f" · {time_ago}" if time_ago else ""
+            print(f"[{c.get('oId', '')}] {author}{suffix}:")
+            content = html_to_text(c.get("commentContent"))
+            for line in content.split("\n"):
+                print(f"    {line}")
+            print()
+    # 回帖分页提示
+    pagination = data.get("pagination") or {}
+    page_count = pagination.get("paginationPageCount") or 1
+    if int(page_count) > 1:
+        print(f"回帖共 {page_count} 页，当前第 {page} 页，可用 -p 翻页。")
 
 
 def _read_content(args: argparse.Namespace) -> str:
