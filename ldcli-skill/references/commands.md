@@ -1,5 +1,14 @@
 # ldcli 完整命令参考
 
+## 功能可用性
+
+| 命令 | 状态 |
+|------|------|
+| 所有读命令（list / show / 用户 / 通知 / 榜单 / system time） | ✅ 可用 |
+| `article post` / `article update` / `comment post` | ⚠️ 部分可用，不建议使用 |
+
+写操作缺陷：服务端按纯文本处理提交内容，换行折叠为空格、Markdown 列表/分段/行内代码丢失，且无法通过 API 修正，只能人工到网页端改格式（详见 `docs/comment-newline-diagnosis.md`）。需要发布内容时，提示用户手动复制粘贴到论坛网页端。
+
 全局参数（可置于任意位置）：
 
 | 参数 | 说明 |
@@ -35,22 +44,24 @@ ldcli article show <id> [-p page]
     # 帖子详情：元信息 + 正文 + 回帖；-p 为回帖页号
     # 回帖多页时输出翻页提示；--json 时返回完整结构（article + pagination）
 
-ldcli article post --title <标题> --tags <标签,逗号分隔>
+ldcli article post --title <标题> --tags <标签,逗号分隔>   # ⚠️ 部分可用，不建议使用
                    (--content <正文> | --file <路径|"-" 表示 stdin>)
                    [--reward-content <打赏区内容>] [--reward-point <积分>]
 
-ldcli article update <id> [--title ...] [--tags ...]
+ldcli article update <id> [--title ...] [--tags ...]       # ⚠️ 部分可用，不建议使用
                      [--content ... | --file ...]
                      [--reward-content ...] [--reward-point ...]
     # 仅更新指定字段，其余保持原值；articleType 由客户端自动取原值回传
+    # ⚠️ 服务端按纯文本处理正文：换行折叠为空格，Markdown 格式丢失；已发布内容只能到网页端手动修格式
 ```
 
 ## comment（回帖）
 
 ```bash
-ldcli comment post --article <帖子ID> (--content <内容> | --file <路径>)
+ldcli comment post --article <帖子ID> (--content <内容> | --file <路径>)   # ⚠️ 部分可用，不建议使用
                    [--reply <被回复的回帖ID>]
     # --reply 用于楼中楼回复；回帖 ID 见 article show 输出中每条回帖行首 [...]
+    # ⚠️ 服务端按纯文本处理回帖：换行折叠为空格，Markdown 列表/行内代码不渲染；建议手动复制粘贴到网页端回帖
 ```
 
 ## domain（领域）
