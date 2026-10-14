@@ -22,9 +22,10 @@ description: 使用 ldcli 命令行工具访问 ld246.com 论坛（黑客派/Sym
 
 ## 前置检查
 
-1. 运行环境二选一：
+1. 运行环境任选其一：
    - 项目源码方式：`uv run ldcli <命令>`（在本项目根目录下）
-   - 已打包的可执行文件：`dist\ldcli.exe <命令>`
+   - 已打包的可执行文件：`build\ldcli.exe <命令>`
+   - 用户自行安装的可执行文件：`ldcli <命令>`（在环境变量中可调用）
 2. 鉴权：Token 依次从 `--token` 参数、环境变量 `LDCLI_TOKEN`、配置文件 `~/.ldcli.toml` 读取。
 3. 若命令返回 401（需要登录），提示用户到 ld246.com 的 设置-账号 页面复制 API Token，执行 `ldcli login <token>`（会先验证再保存），或临时用 `--token` 传入。**不要**猜测或编造 token。
 4. 确认登录状态：`ldcli whoami`。
@@ -84,7 +85,7 @@ ldcli notify read commented       # 标记已读（仅 commented|comment2ed|repl
 ldcli domain list / domain show <uri>   # 领域
 ldcli tag list / tag show <uri>         # 标签
 ldcli top newbies / top followers       # 榜单
-ldcli system time                        # 服务器时间（也可用作连通性探测）
+ldcli system time                       # 服务器时间（也可用作连通性探测）
 ```
 
 ## 错误处理
