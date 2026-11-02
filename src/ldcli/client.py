@@ -89,15 +89,7 @@ class Client:
         except httpx.HTTPError as e:
             raise ApiError(f"网络请求失败：{e}") from e
 
-        if resp.status_code == 401:
-            raise ApiError(
-                "需要登录（401）：请先执行 ldcli login <token> 保存 API Token"
-                "（在 ld246.com 设置-账号 页面获取），或通过 --token/LDCLI_TOKEN 提供"
-            )
-        if resp.status_code == 403:
-            raise ApiError("权限不足（403）：当前账号无权执行该操作")
-        if resp.status_code >= 400:
-            raise ApiError(f"HTTP {resp.status_code}：{resp.text[:200]}")
+        self._check_status(resp)
 
         try:
             payload = resp.json()
@@ -106,6 +98,30 @@ class Client:
         if not isinstance(payload, dict):
             raise ApiError(f"响应结构异常：{str(payload)[:200]}")
         return payload
+
+    @staticmethod
+    def _check_status(resp: httpx.Response) -> None:
+        """校验 HTTP 状态码（401 需登录 / 403 权限不足 / 其他 4xx、5xx）。"""
+        if resp.status_code == 401:
+            raise ApiError(
+                "需要登录（401）：请先执行 ldcli login <token> 保存 API Token"
+                "（在 ld246.com 设置-账号 页面获取），或通过 --token/LDCLI_TOKEN/LD_TOKEN 提供"
+            )
+        if resp.status_code == 403:
+            raise ApiError("权限不足（403）：当前账号无权执行该操作")
+        if resp.status_code >= 400:
+            raise ApiError(f"HTTP {resp.status_code}：{resp.text[:200]}")
+
+    def get_text(self, path: str, *, params: dict[str, Any] | None = None) -> str:
+        """GET 并返回响应原始文本（用于非 JSON 封装的接口，如 /article/raw/{id}）。"""
+        self._throttle()
+        clean_params = {k: v for k, v in (params or {}).items() if v is not None}
+        try:
+            resp = self._http.get(path, params=clean_params)
+        except httpx.HTTPError as e:
+            raise ApiError(f"网络请求失败：{e}") from e
+        self._check_status(resp)
+        return resp.text
 
     def set_token(self, token: str | None) -> None:
         """更新鉴权 Token（用于 login 命令验证新 Token）。"""

@@ -9,13 +9,16 @@ from pathlib import Path
 CONFIG_FILE = Path.home() / ".ldcli.toml"
 
 TOKEN_ENV = "LDCLI_TOKEN"
+# 兼容 SiYuan/Agent 生态的备用环境变量
+FALLBACK_TOKEN_ENV = "LD_TOKEN"
 
 
 def load_token() -> str | None:
-    """按优先级读取 token：环境变量 > 配置文件。"""
-    env_token = os.environ.get(TOKEN_ENV, "").strip()
-    if env_token:
-        return env_token
+    """按优先级读取 token：环境变量（LDCLI_TOKEN > LD_TOKEN）> 配置文件。"""
+    for name in (TOKEN_ENV, FALLBACK_TOKEN_ENV):
+        env_token = os.environ.get(name, "").strip()
+        if env_token:
+            return env_token
     data = _read_config()
     auth = data.get("auth") or {}
     token = auth.get("token")

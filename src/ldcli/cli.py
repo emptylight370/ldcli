@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"ldcli {__version__}")
     parser.add_argument("--json", action="store_true", help="输出原始 JSON 而非人类可读格式")
-    parser.add_argument("--token", help=f"API Token（默认依次读取参数、环境变量 {TOKEN_ENV}、配置文件）")
+    parser.add_argument("--token", help=f"API Token（默认依次读取参数、环境变量 {TOKEN_ENV} 或 LD_TOKEN、配置文件）")
     parser.set_defaults(func=None)
     parser.set_defaults(as_json=False)
 
@@ -71,6 +71,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-p", "--page", type=int, default=1, help="回帖页号")
     p.set_defaults(func=cmd_article_show)
 
+    p = article_sub.add_parser("raw", help="获取帖子原始 Markdown 源文（不经 HTML 渲染）")
+    p.add_argument("id", help="帖子 ID")
+    p.set_defaults(func=cmd_article_raw)
+
     p = article_sub.add_parser("post", help="发布帖子")
     p.add_argument("--title", required=True, help="帖子标题")
     p.add_argument("--tags", required=True, help="标签，英文逗号分隔")
@@ -99,7 +103,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--content", help="回帖内容（与 --file 二选一，均省略时交互输入）")
     p.add_argument("--file", help="从文件读取内容（'-' 表示 stdin）")
     p.add_argument("--reply", help="被回复的回帖 ID（楼中楼回复时使用）")
+    p.add_argument("--content-type", choices=["markdown"],
+                   help="声明内容类型为 Markdown（写入 commentContentType），避免服务端按纯文本折叠格式")
     p.set_defaults(func=cmd_comment_post)
+
+    p = comment_sub.add_parser("update", help="更新自己的回帖")
+    p.add_argument("id", help="回帖 ID")
+    p.add_argument("--content", help="回帖内容（与 --file 二选一，均省略时交互输入）")
+    p.add_argument("--file", help="从文件读取内容（'-' 表示 stdin）")
+    p.add_argument("--content-type", choices=["markdown"],
+                   help="声明内容类型为 Markdown（不传则保持服务端默认处理）")
+    p.set_defaults(func=cmd_comment_update)
 
     # ---- domain ----
     p = sub.add_parser("domain", help="领域相关操作")
@@ -441,10 +455,29 @@ def cmd_comment_post(client: Client, args: argparse.Namespace) -> Any:
     }
     if args.reply:
         body["commentOriginalCommentId"] = args.reply
+    if args.content_type:
+        body["commentContentType"] = args.content_type
     result = client.post("/api/v2/comment", json_body=body)
     if not args.json:
         print("回帖发布成功。")
     return result
+
+
+def cmd_comment_update(client: Client, args: argparse.Namespace) -> Any:
+    body: dict[str, Any] = {
+        "commentContent": _read_content(args),
+    }
+    if args.content_type:
+        body["commentContentType"] = args.content_type
+    # 不传 commentVisible，保持回帖当前可见性
+    result = client.put(f"/api/v2/comment/{args.id}", json_body=body)
+    if not args.json:
+        print("回帖更新成功。")
+    return result
+
+
+def cmd_article_raw(client: Client, args: argparse.Namespace) -> None:
+    print(client.get_text(f"/article/raw/{args.id}"))
 
 
 def cmd_domain_list(client: Client, args: argparse.Namespace) -> Any:

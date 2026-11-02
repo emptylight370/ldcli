@@ -4,17 +4,19 @@
 
 | 命令 | 状态 |
 |------|------|
-| 所有读命令（list / show / 用户 / 通知 / 榜单 / system time） | ✅ 可用 |
-| `article post` / `article update` / `comment post` | ⚠️ 部分可用，不建议使用 |
+| 所有读命令（list / show / raw / 用户 / 通知 / 榜单 / system time） | ✅ 可用 |
+| `comment post` / `comment update` 带 `--content-type markdown` | ✅ 可用（2026-11-02 实测验证） |
+| `comment post` / `comment update` 不带 `--content-type` | ⚠️ 格式折叠，不要使用 |
+| `article post` / `article update` | ⚠️ 部分可用，不建议使用（未验证） |
 
-写操作缺陷：服务端按纯文本处理提交内容，换行折叠为空格、Markdown 列表/分段/行内代码丢失，且无法通过 API 修正，只能人工到网页端改格式（详见 `docs/comment-newline-diagnosis.md`）。需要发布内容时，提示用户手动复制粘贴到论坛网页端。
+写操作缺陷：不声明内容类型时服务端按纯文本处理提交内容，换行折叠为空格、Markdown 列表/分段/行内代码丢失（详见 `docs/comment-newline-diagnosis.md`）。回帖传 `--content-type markdown`（写入 `commentContentType`）已实测可正确渲染；`comment update` 可作为发布后修补格式的补救通道。发帖/改帖无已验证的类型声明方式，仍提示用户手动复制粘贴到论坛网页端。
 
 全局参数（可置于任意位置）：
 
 | 参数 | 说明 |
 |------|------|
 | `--json` | 输出服务端原始 JSON，替代人类可读格式 |
-| `--token <token>` | 临时指定 API Token（优先级：`--token` > 环境变量 `LDCLI_TOKEN` > 配置文件 `~/.ldcli.toml`） |
+| `--token <token>` | 临时指定 API Token（优先级：`--token` > 环境变量 `LDCLI_TOKEN` > `LD_TOKEN` > 配置文件 `~/.ldcli.toml`） |
 | `--version` | 查看版本 |
 | `--help` | 各级子命令均支持 |
 
@@ -44,6 +46,10 @@ ldcli article show <id> [-p page]
     # 帖子详情：元信息 + 正文 + 回帖；-p 为回帖页号
     # 回帖多页时输出翻页提示；--json 时返回完整结构（article + pagination）
 
+ldcli article raw <id>
+    # 帖子原始 Markdown 源文（GET /article/raw/{id}，非 JSON 封装，直接输出文本）
+    # 需要分析/引用/改写帖子源码时使用，优于 article show 的 HTML 转文本
+
 ldcli article post --title <标题> --tags <标签,逗号分隔>   # ⚠️ 部分可用，不建议使用
                    (--content <正文> | --file <路径|"-" 表示 stdin>)
                    [--reward-content <打赏区内容>] [--reward-point <积分>]
@@ -58,10 +64,17 @@ ldcli article update <id> [--title ...] [--tags ...]       # ⚠️ 部分可用
 ## comment（回帖）
 
 ```bash
-ldcli comment post --article <帖子ID> (--content <内容> | --file <路径>)   # ⚠️ 部分可用，不建议使用
+ldcli comment post --article <帖子ID> (--content <内容> | --file <路径>)
                    [--reply <被回复的回帖ID>]
+                   [--content-type markdown]
     # --reply 用于楼中楼回复；回帖 ID 见 article show 输出中每条回帖行首 [...]
-    # ⚠️ 服务端按纯文本处理回帖：换行折叠为空格，Markdown 列表/行内代码不渲染；建议手动复制粘贴到网页端回帖
+    # 回帖务必带 --content-type markdown（写入 commentContentType，已实测验证）；
+    # 不带时服务端按纯文本处理：换行折叠为空格，Markdown 列表/行内代码不渲染
+
+ldcli comment update <回帖ID> (--content <内容> | --file <路径>)
+                     [--content-type markdown]
+    # 更新自己的回帖（PUT /api/v2/comment/{id}）；不传 commentVisible，保持可见性不变
+    # 可作为发布后修补格式的补救通道：--content-type markdown 重发内容
 ```
 
 ## domain（领域）
