@@ -1,6 +1,6 @@
 [project]
 name = "ldcli"
-version = "0.1.0"
+version = "0.1.2"
 description = "ld246.com 社区命令行客户端"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -18,6 +18,6 @@ dev = [
 requires = ["uv_build>=0.12.18,<0.13.0"]
 build-backend = "uv_build"
 
-[[tool.uv.index]]
-url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
-default = true
+# [[tool.uv.index]]
+# url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
+# default = true
