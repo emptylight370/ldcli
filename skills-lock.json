@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "skills": {
+    "ldcli-skill": {
+      "source": "./ldcli-skill",
+      "sourceType": "local",
+      "computedHash": "f044c94d0b3ab537d44dc8cf22c17fcbd2d1ad2652ec056c6c9f814c3567eae1"
+    }
+  }
+}
