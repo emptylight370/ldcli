@@ -5,7 +5,7 @@
 ## 使用方法
 
 1. 编译或安装项目
-2. 安装[附带 skill](ldcli-skill/) 至 Agent skill 目录
+2. 安装[附带 skill](ldcli-skill/) 至 Agent skill 目录（支持使用 `npx skills` 工具安装）
 3. 登录 CLI
 4. 通过 `ldcli` 命令使用 CLI
 
@@ -21,3 +21,11 @@
 2. 写入功能未完善，如发布帖子、回复帖子等
 
 详情查看 `--help` 文档。
+
+### 安装 skill
+
+可通过以下命令安装 skill 到本地：
+
+```bash
+npx skills add emptylight370/ldcli --skill ldcli-skill
+```
